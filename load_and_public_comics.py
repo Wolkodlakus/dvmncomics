@@ -8,6 +8,21 @@ import random
 import shutil
 
 
+class VKAPIError(Exception):
+    def __init__(self, * args):
+        if args:
+            self.message = args[0]
+        else:
+            self.message = None
+
+    def __str__(self):
+        print('calling str')
+        if self.message:
+            return 'VKAPIError, {0}'.format(self.message)
+        else:
+            return 'VKAPIError has been raised'
+
+
 def get_current_comics_amount():
     """Даёт номер последнего коммента, т.е. их количество"""
     url_comic = f'https://xkcd.com/info.0.json'
@@ -67,6 +82,7 @@ def load_vk_groups(vk_token):
     url = f'{url_vk}groups.get'
     response = requests.get(url, params)
     response.raise_for_status()
+    check_answer_vk_api(response)
     return response.text
 
 
@@ -77,6 +93,7 @@ def get_vk_wall_upload_server(vk_token, group_id):
     params['group_id'] = group_id
     response = requests.get(url, params)
     response.raise_for_status()
+    check_answer_vk_api(response)
     return response.json()['response']
 
 
@@ -92,6 +109,7 @@ def save_photo_vk_wall(upload_url, dir):
                 }
                 response = requests.post(upload_url, files=files)
                 response.raise_for_status()
+                check_answer_vk_api(response)
                 photos_server.append(response.json())
     return photos_server
 
@@ -111,6 +129,7 @@ def public_photo_wall(owner_id, message, attachments, friends_only=0, from_group
     params.update(params_add)
     response = requests.post(url, params=params)
     response.raise_for_status()
+    check_answer_vk_api(response)
 
 
 def upload_photo_wall(photos_server, group_id):
@@ -125,6 +144,7 @@ def upload_photo_wall(photos_server, group_id):
         params['group_id'] = group_id
         response = requests.post(url, params)
         response.raise_for_status()
+        check_answer_vk_api(response)
         upload_photos.append(response.json()['response'])
     return upload_photos
 
@@ -136,6 +156,13 @@ def post_comic_in_group(dir, vk_token, group_id, comment):
     upload_photos = upload_photo_wall(photos_server, group_id)
     attachments = f'photo{upload_photos[0][0]["owner_id"]}_{upload_photos[0][0]["id"]}'
     public_photo_wall(group_id, comment, attachments)
+
+
+def check_answer_vk_api(response):
+    if not response.json().get('error'):
+        return
+    raise VKAPIError(f"Код ошибки {response.json()['error']['error_code']} "
+                     f"Текст ошибки {response.json()['error']['error_msg']}")
 
 
 if __name__ == '__main__':
@@ -150,5 +177,7 @@ if __name__ == '__main__':
         comic_number = random.randint(1, comics_amount)
         comment = download_random_comic(dir, comic_number)
         post_comic_in_group(dir, vk_token, group_id, comment)
+    except VKAPIError as vkerror:
+        print('Ошибка API VK', vkerror.message)
     finally:
         shutil.rmtree(dir)
