@@ -166,10 +166,11 @@ def post_comic_in_group(dir, vk_token, group_id, comment):
 
 
 def check_answer_vk_api(response):
-    if not response.json().get('error'):
+    answer = response.json()
+    if not answer.get('error'):
         return
-    raise VKAPIError(f"Код ошибки {response.json()['error']['error_code']} "
-                     f"Текст ошибки {response.json()['error']['error_msg']}")
+    raise VKAPIError(f"Код ошибки {answer['error']['error_code']} "
+                     f"Текст ошибки {answer['error']['error_msg']}")
 
 
 if __name__ == '__main__':
