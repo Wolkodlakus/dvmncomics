@@ -33,11 +33,11 @@ def get_current_comics_amount():
     return num_comics
 
 
-def download_image_from_web(dir, url_img, name_img, params=''):
+def download_image_from_web(directory, url_img, name_img, params=''):
     """Загружает картинку/файл с указанного url """
     response = requests.get(url_img, params=params)
     response.raise_for_status()
-    with open(Path(dir, name_img), 'wb') as file:
+    with open(Path(directory, name_img), 'wb') as file:
         file.write(response.content)
         logging.info(f'Изображение скачано и записано в файл')
 
@@ -54,7 +54,7 @@ def give_file_extension(url_string):
     return splitext(find_filename_in_url(url_string))[-1]
 
 
-def download_random_comic(dir, comic_number):
+def download_random_comic(directory, comic_number):
     """Скачивает в локальное хранилище случайный комикс xkcd"""
     url_comic = f'https://xkcd.com/{comic_number}/info.0.json'
     response = requests.get(url_comic)
@@ -64,7 +64,7 @@ def download_random_comic(dir, comic_number):
     url_img = comic_info['img']
     response = requests.get(url_img)
     response.raise_for_status()
-    with open(Path(dir, find_filename_in_url(url_img)), 'wb') as file:
+    with open(Path(directory, find_filename_in_url(url_img)), 'wb') as file:
         file.write(response.content)
         logging.info(f'Комикс {comic_number} скачан и записан в файл')
         return comment
@@ -101,10 +101,10 @@ def get_vk_wall_upload_server(vk_token, group_id):
     return response.json()['response']
 
 
-def save_photo_vk_wall(upload_url, dir):
+def save_photo_vk_wall(upload_url, directory):
     """Загружает все файлы из директории на сервер вк"""
     photos_server = []
-    for dirpath, dirnames, filenames in os.walk(dir):
+    for dirpath, dirnames, filenames in os.walk(directory):
         filepaths = [os.path.join(dirpath, filename) for filename in filenames]
         for filepath in filepaths:
             with open(filepath, 'rb') as img_file:
@@ -156,10 +156,10 @@ def upload_photo_wall(photos_server, group_id):
     return upload_photos
 
 
-def post_comic_in_group(dir, vk_token, group_id, comment):
+def post_comic_in_group(directory, vk_token, group_id, comment):
     """Постит комикс в группу"""
     vk_wall_info = get_vk_wall_upload_server(vk_token, group_id)
-    photos_server = save_photo_vk_wall(vk_wall_info['upload_url'], dir)
+    photos_server = save_photo_vk_wall(vk_wall_info['upload_url'], directory)
     upload_photos = upload_photo_wall(photos_server, group_id)
     attachments = f'photo{upload_photos[0][0]["owner_id"]}_{upload_photos[0][0]["id"]}'
     public_photo_wall(group_id, comment, attachments)
@@ -177,8 +177,8 @@ if __name__ == '__main__':
     load_dotenv()
     vk_token = os.getenv('VK_TOKEN')
     group_id = os.getenv('GROUP_ID')
-    dir = 'files'
-    os.makedirs(dir, exist_ok=True)
+    directory = 'files'
+    os.makedirs(directory, exist_ok=True)
 
     logging.basicConfig(level=logging.INFO)
     logging.basicConfig(
@@ -188,9 +188,9 @@ if __name__ == '__main__':
     try:
         comics_amount = get_current_comics_amount()
         comic_number = random.randint(1, comics_amount)
-        comment = download_random_comic(dir, comic_number)
-        post_comic_in_group(dir, vk_token, group_id, comment)
+        comment = download_random_comic(directory, comic_number)
+        post_comic_in_group(directory, vk_token, group_id, comment)
     except VKAPIError as vkerror:
         logging.error(f'Ошибка API VK {vkerror.message}')
     finally:
-        shutil.rmtree(dir)
+        shutil.rmtree(directory)
