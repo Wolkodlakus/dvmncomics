@@ -10,7 +10,7 @@ import logging
 
 
 class VKAPIError(Exception):
-    def __init__(self, * args):
+    def __init__(self, *args):
         if args:
             self.message = args[0]
         else:
@@ -119,7 +119,8 @@ def save_photo_vk_wall(upload_url, directory):
     return photos_server
 
 
-def public_photo_wall(owner_id, message, attachments, friends_only=0, from_group=1, signed=0):
+def public_photo_wall(owner_id, message, attachments,
+                      friends_only=0, from_group=1, signed=0):
     """Публикует загруженный файл с комментарием"""
     url_vk, params = load_vk_info(vk_token)
     url = f'{url_vk}wall.post'
@@ -161,7 +162,8 @@ def post_comic_in_group(directory, vk_token, group_id, comment):
     vk_wall_info = get_vk_wall_upload_server(vk_token, group_id)
     photos_server = save_photo_vk_wall(vk_wall_info['upload_url'], directory)
     upload_photos = upload_photo_wall(photos_server, group_id)
-    attachments = f'photo{upload_photos[0][0]["owner_id"]}_{upload_photos[0][0]["id"]}'
+    attachments = f'photo{upload_photos[0][0]["owner_id"]}_' \
+                  f'{upload_photos[0][0]["id"]}'
     public_photo_wall(group_id, comment, attachments)
 
 
