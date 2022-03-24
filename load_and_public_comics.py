@@ -6,6 +6,7 @@ from urllib.parse import urlparse, unquote
 from dotenv import load_dotenv
 import random
 import shutil
+import logging
 
 
 class VKAPIError(Exception):
@@ -16,7 +17,6 @@ class VKAPIError(Exception):
             self.message = None
 
     def __str__(self):
-        print('calling str')
         if self.message:
             return 'VKAPIError, {0}'.format(self.message)
         else:
@@ -28,7 +28,9 @@ def get_current_comics_amount():
     url_comic = f'https://xkcd.com/info.0.json'
     response = requests.get(url_comic)
     response.raise_for_status()
-    return response.json()["num"]
+    num_comics = response.json()["num"]
+    logging.info(f'На сегодня {num_comics} комиксов на XKCD')
+    return num_comics
 
 
 def download_image_from_web(dir, url_img, name_img, params=''):
@@ -37,6 +39,7 @@ def download_image_from_web(dir, url_img, name_img, params=''):
     response.raise_for_status()
     with open(Path(dir, name_img), 'wb') as file:
         file.write(response.content)
+        logging.info(f'Изображение скачано и записано в файл')
 
 
 def find_filename_in_url(url_string):
@@ -63,6 +66,7 @@ def download_random_comic(dir, comic_number):
     response.raise_for_status()
     with open(Path(dir, find_filename_in_url(url_img)), 'wb') as file:
         file.write(response.content)
+        logging.info(f'Комикс {comic_number} скачан и записан в файл')
         return comment
 
 
@@ -100,10 +104,10 @@ def get_vk_wall_upload_server(vk_token, group_id):
 def save_photo_vk_wall(upload_url, dir):
     """Загружает все файлы из директории на сервер вк"""
     photos_server = []
-    for root, dirs, files in os.walk(dir):
-        files = [os.path.join(root, filename) for filename in files]
-        for file in files:
-            with open(file, 'rb') as img_file:
+    for dirpath, dirnames, filenames in os.walk(dir):
+        filepaths = [os.path.join(dirpath, filename) for filename in filenames]
+        for filepath in filepaths:
+            with open(filepath, 'rb') as img_file:
                 files = {
                     'photo': img_file,
                 }
@@ -111,6 +115,7 @@ def save_photo_vk_wall(upload_url, dir):
                 response.raise_for_status()
                 check_answer_vk_api(response)
                 photos_server.append(response.json())
+    logging.info(f'Файлы из временного хранилища записаны на сервер VK')
     return photos_server
 
 
@@ -130,6 +135,7 @@ def public_photo_wall(owner_id, message, attachments, friends_only=0, from_group
     response = requests.post(url, params=params)
     response.raise_for_status()
     check_answer_vk_api(response)
+    logging.info(f'Загруженные файлы опубликованы')
 
 
 def upload_photo_wall(photos_server, group_id):
@@ -146,6 +152,7 @@ def upload_photo_wall(photos_server, group_id):
         response.raise_for_status()
         check_answer_vk_api(response)
         upload_photos.append(response.json()['response'])
+    logging.info(f'Загруженные файлы перенесены в буфер группы')
     return upload_photos
 
 
@@ -172,12 +179,17 @@ if __name__ == '__main__':
     dir = 'files'
     os.makedirs(dir, exist_ok=True)
 
+    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(message)s"
+    )
+
     try:
         comics_amount = get_current_comics_amount()
         comic_number = random.randint(1, comics_amount)
         comment = download_random_comic(dir, comic_number)
         post_comic_in_group(dir, vk_token, group_id, comment)
     except VKAPIError as vkerror:
-        print('Ошибка API VK', vkerror.message)
+        logging.error(f'Ошибка API VK {vkerror.message}')
     finally:
         shutil.rmtree(dir)
