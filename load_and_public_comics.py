@@ -10,11 +10,9 @@ import logging
 
 
 class VKAPIError(Exception):
-    def __init__(self, *args):
-        if args:
-            self.message = args[0]
-        else:
-            self.message = None
+    def __init__(self, message):
+        self.message = message
+
 
     def __str__(self):
         if self.message:
@@ -86,8 +84,9 @@ def load_vk_groups(vk_token):
     url = f'{url_vk}groups.get'
     response = requests.get(url, params)
     response.raise_for_status()
-    check_answer_vk_api(response)
-    return response.text
+    answer = response.json()
+    check_answer_vk_api(answer)
+    return answer
 
 
 def get_vk_wall_upload_server(vk_token, group_id):
@@ -97,8 +96,9 @@ def get_vk_wall_upload_server(vk_token, group_id):
     params['group_id'] = group_id
     response = requests.get(url, params)
     response.raise_for_status()
-    check_answer_vk_api(response)
-    return response.json()['response']
+    answer = response.json()
+    check_answer_vk_api(answer)
+    return answer['response']
 
 
 def save_photo_vk_wall(upload_url, directory):
@@ -113,8 +113,9 @@ def save_photo_vk_wall(upload_url, directory):
                 }
                 response = requests.post(upload_url, files=files)
                 response.raise_for_status()
-                check_answer_vk_api(response)
-                photos_server.append(response.json())
+                answer = response.json()
+                check_answer_vk_api(answer)
+                photos_server.append(answer)
     logging.info(f'Файлы из временного хранилища записаны на сервер VK')
     return photos_server
 
@@ -135,6 +136,7 @@ def public_photo_wall(owner_id, message, attachments,
     params.update(params_add)
     response = requests.post(url, params=params)
     response.raise_for_status()
+    answer = response.json()
     check_answer_vk_api(response)
     logging.info(f'Загруженные файлы опубликованы')
 
@@ -151,8 +153,9 @@ def upload_photo_wall(photos_server, group_id):
         params['group_id'] = group_id
         response = requests.post(url, params)
         response.raise_for_status()
-        check_answer_vk_api(response)
-        upload_photos.append(response.json()['response'])
+        answer = response.json()
+        check_answer_vk_api(answer)
+        upload_photos.append(answer['response'])
     logging.info(f'Загруженные файлы перенесены в буфер группы')
     return upload_photos
 
@@ -167,8 +170,7 @@ def post_comic_in_group(directory, vk_token, group_id, comment):
     public_photo_wall(group_id, comment, attachments)
 
 
-def check_answer_vk_api(response):
-    answer = response.json()
+def check_answer_vk_api(answer):
     if not answer.get('error'):
         return
     raise VKAPIError(f"Код ошибки {answer['error']['error_code']} "
